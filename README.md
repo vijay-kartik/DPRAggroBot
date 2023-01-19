@@ -10,7 +10,7 @@ A Telegram bot which aggregates multiple DPRs of a government organisation and c
 
 ## Usage
 
-1. Start the bot by running `python3 bot.py`
+1. Start the bot by running `python3 main.py`
 2. Interact with the bot by sending commands to it:
    - /start - Trigger the DPR input one by one
    - /eval - Get the final report
