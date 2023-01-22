@@ -1,15 +1,28 @@
 import os
+import re
 import telebot
 from datetime import datetime
 
 API_KEY = os.environ['API_KEY']
-
-headings = ['Monitored Wells:', 'TPR:', 'Remarks:', 'Wellhead Pressure:']
-ends = ['TPR:', 'Remarks:', 'Wellhead Pressure:', 'Regards']
-areas = ['Area-1', 'Area-3', 'Area-4']
 bot = telebot.TeleBot(API_KEY)
 
-greet_msg = "Welcome to DPRAggroBot! I am here to help you with aggregating your DPRs from Area-1, Area-3 and Area-4.\n\nYou can interact with me by using the following commands:\n/start - Trigger the DPR input one by one\n/eval - Get the final report \n/reset - Reset DPR data \n/help - Display this message again \n\nSome of the commands may not run for now as the new version is still in dev phase. I request you to kindly use old strategy to get your work done for now."
+# Set the list of commands for the bot
+commands = [
+    {"command": "/start", "description": "Trigger the DPR input one by one"},
+    {"command": "/eval", "description": "Get the final report"},
+    {"command": "/reset", "description": "Reset DPR data"},
+    {"command": "/help", "description": "Display this message again"}
+]
+bot.set_my_commands(commands)
+
+
+
+headings = ['Monitored Wells:', 'TPR:', 'Remarks:', 'Wellhead Pressure:']
+locations = []
+ends = ['TPR:', 'Remarks:', 'Wellhead Pressure:', 'Regards']
+areas = ['Area-1', 'Area-3', 'Area-4']
+
+greet_msg = "Welcome to DPRAggroBot! I am here to help you with aggregating your DPRs from Area-1, Area-3 and Area-4.\n\nYou can interact with me by using the following commands:\n/start - Trigger the DPR input one by one\n/eval - Get the final report \n/reset - Reset DPR data \n/help - Display this message again"
 
 h1 = 'Monitored Wells:'
 h2 = 'TPR:'
@@ -29,10 +42,26 @@ def make_bold(str):
   return '*' + str + '*'
 
 def clean(str):
-  return str.rstrip('\n*\n').lstrip('\n*\n')
+  return str.strip('\n*\n*')
 
 def extractRemarks(remarkString):
   print(remarkString)
+
+def isInValidFormat(inputStr):
+  global locations
+  match1 = re.search(r"\*(monitored well(s)?:\*", inputStr, re.IGNORECASE)
+  match2 = re.search(r"\*(well head|wellhead) pressure(s)?:\*", inputStr, re.IGNORECASE)
+  match3 = re.search(r"\*TPR(s)?:\*", inputStr, re.IGNORECASE)
+  match4 = re.search(r"\*remark(s)?:\*")
+
+  if match1 and match2 and match3 and match4:
+    locations.append([match1.start(), match1.end()])
+    locations.append([match2.start(), match2.end()])
+    locations.append([match3.start(), match3.end()])
+    locations.append([match4.start(), match4.end()])
+    return True
+  else:
+    return False
 
 # bot APIs
 @bot.message_handler(commands=['start'])
@@ -55,28 +84,31 @@ def reset_extracts(msg):
   h3_text = ''
   h4_text = ''
   msg_input_count = 0
+  locations = []
 
 def collect_message(message):
-  global msg_input_count 
-  extract_append_text(message)
-  msg_input_count += 1
+  global msg_input_count
+  if isInValidFormat(message.text):
+    extract_append_text(message)
+    msg_input_count += 1
+  else:
+    bot.send_message(message.chat.id, "Your message has some formatting issues. Kindly correct the format and try again.")  
   start(message)
     
 @bot.message_handler(regexp="Sir")
 def extract_append_text(message):
-  global h1_text
-  h1_text += (message.text.split(h1)[1].split(h2)[0].rstrip('\n*').lstrip('*\n') + '\n')
+  global h1_text, h2_text, h3_text, h4_text
+  h1_text += (
+    clean(message.text.split(h1)[1].split(h2)[0]) + '\n')
 
-  global h2_text
   h2_text += (
-    message.text.split(h2)[1].split(h3)[0].rstrip('\n*').lstrip('*\n') + '\n')
+    clean(message.text.split(h2)[1].split(h3)[0]) + '\n')
 
-  global h3_text
-  h3_text += (message.text.split(h3)[1].split(h4)[0].rstrip('\n*').lstrip('*\n') + '\n')
+  h3_text += (
+    clean(message.text.split(h3)[1].split(h4)[0]) + '\n')
   
-  global h4_text
-  h4_text += (message.text.split(h4)[1].split(end)[0].rstrip('\n*').lstrip('*\n') + '\n')
-
+  h4_text += (
+    clean(message.text.split(h4)[1].split(end)[0]) + '\n')
   bot.send_message(message.chat.id, "done")
 
 
