@@ -49,16 +49,19 @@ def extractRemarks(remarkString):
 
 def isInValidFormat(inputStr):
   global locations
-  match1 = re.search(r"\*(monitored well(s)?:\*", inputStr, re.IGNORECASE)
-  match2 = re.search(r"\*(well head|wellhead) pressure(s)?:\*", inputStr, re.IGNORECASE)
-  match3 = re.search(r"\*TPR(s)?:\*", inputStr, re.IGNORECASE)
-  match4 = re.search(r"\*remark(s)?:\*")
+  match1 = re.search(r"\*(monitored well)(s)?(:)?\*", inputStr, re.IGNORECASE)
+  
+  match2 = re.search(r"\*TPR(s)?(:)?\*", inputStr, re.IGNORECASE)
+  match3 = re.search(r"\*remark(s)?(:)?\*", inputStr, re.IGNORECASE)
+  match5 = re.search(r"regards", inputStr, re.IGNORECASE)
+  match4 = re.search(r"\*(well head|wellhead) pressure(s)?(:)?\*", inputStr, re.IGNORECASE)
 
-  if match1 and match2 and match3 and match4:
+  if match1 and match2 and match3 and match4 and match5:
     locations.append([match1.start(), match1.end()])
     locations.append([match2.start(), match2.end()])
     locations.append([match3.start(), match3.end()])
     locations.append([match4.start(), match4.end()])
+    locations.append([match5.start(), match5.end()])
     return True
   else:
     return False
@@ -78,7 +81,7 @@ def greet(message):
 
 @bot.message_handler(commands=['reset'])
 def reset_extracts(msg):
-  global h1_text, h2_text, h3_text, h4_text, msg_input_count
+  global h1_text, h2_text, h3_text, h4_text, msg_input_count, locations
   h1_text = ''
   h2_text = ''
   h3_text = ''
@@ -97,19 +100,28 @@ def collect_message(message):
     
 @bot.message_handler(regexp="Sir")
 def extract_append_text(message):
-  global h1_text, h2_text, h3_text, h4_text
+  global h1_text, h2_text, h3_text, h4_text, locations
   h1_text += (
-    clean(message.text.split(h1)[1].split(h2)[0]) + '\n')
+    clean(message.text[locations[0][1]+1:locations[1][0]]) + '\n')
+  print("h1 text \n")
+  print(h1_text)
 
   h2_text += (
-    clean(message.text.split(h2)[1].split(h3)[0]) + '\n')
+    clean(message.text[locations[1][1]+1:locations[2][0]]) + '\n')
+  print("h2 text \n")
+  print(h2_text)
 
   h3_text += (
-    clean(message.text.split(h3)[1].split(h4)[0]) + '\n')
+    clean(message.text[locations[2][1]+1:locations[3][0]]) + '\n')
+  print("h3 text \n")
+  print(h3_text)
   
   h4_text += (
-    clean(message.text.split(h4)[1].split(end)[0]) + '\n')
+    clean(message.text[locations[3][1]+1:locations[4][0]]) + '\n')
+  print("h4 text \n")
+  print(h4_text)
   bot.send_message(message.chat.id, "done")
+  locations = []
 
 
 @bot.message_handler(commands=['eval'])
